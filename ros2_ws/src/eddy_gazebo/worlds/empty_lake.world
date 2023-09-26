@@ -1,0 +1,35 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+
+  <world name="empty_lake">
+    <physics type="ode">
+	<ode>
+		<constraints>
+			<contact_surface_layer>0.002</contact_surface_layer>
+		</constraints>
+	</ode>
+	</physics>
+
+	<scene>
+		<ambient>0.01 0.01 0.01 1.0</ambient>
+		<sky></sky>
+		<shadows>0</shadows>
+		<grid>1</grid>
+		<orgin_visual>1</orgin_visual>
+	</scene>
+
+	<include>
+  		<uri>model://sun</uri>
+	</include>
+<!--
+	<include>
+		<uri>model://lake</uri>
+		<pose>0 0 0 0 0 0</pose>
+	</include>
+	<include>
+		<uri>model://water</uri>
+		<pose>0 0 0 0 0 0</pose>
+	</include>
+-->
+	</world>
+</sdf>

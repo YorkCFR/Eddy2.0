@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<sdf version="1.4">
+  <world name="default">
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    <model name="Farlain_Lake">
+      <pose>0 0 0  0 0 0</pose>
+      <static>true</static>
+      <link name="body">
+      <collision name="collision">
+        <geometry>
+          <plane>
+            <normal>0 0 1</normal>
+            <size>500 500</size>
+          </plane>
+        </geometry>
+      </collision>
+        <visual name="visual">
+          <geometry>
+            <mesh><uri>farlain.dae</uri></mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+    <model name="bermuda_bottom">
+      <pose>0 0 -10  0 0 0</pose>
+      <static>true</static>
+      <link name="mud">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>500 500</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>500 500</size>
+            </plane>
+          </geometry>
+          <material>Gazebo/Grey</material>
+        </visual>
+      </link>
+    </model>
+    <model name="bermuda_strange">
+      <pose>0 0 -8  0 0 0</pose>
+      <static>true</static>
+      <link name="strange">
+        <collision name="collision">
+          <geometry>
+            <mesh>
+              <uri>jenkin.obj</uri>
+              <scale>20 20 20</scale>
+            </mesh>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>jenkin.obj</uri>
+              <scale>20 20 20</scale>
+            </mesh>
+          </geometry>
+          <material>
+            <ambient>1 1 0 1</ambient>
+          </material>
+        </visual>
+      </link>
+    </model>
+    <model name="plant">
+      <pose>0 5 -10  0 0 0</pose>
+      <static>true</static>
+      <link name="ewm_plant">
+        <collision name="collision">
+          <geometry>
+            <mesh>
+              <uri>4mtallplant.stl</uri>
+              <scale>1 1 1</scale>
+            </mesh>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <mesh>
+              <uri>4mtallplant.stl</uri>
+              <scale>1 1 1</scale>
+            </mesh>
+          </geometry>
+          <material>
+            <ambient>0 1 0 1</ambient>
+          </material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>    

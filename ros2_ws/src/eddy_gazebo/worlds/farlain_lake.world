@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<sdf version="1.4">
+  <world name="default">
+    <include>
+      <uri>model://sun</uri>
+    </include>
+    <model name="Farlain_Lake">
+      <pose>0 0 0  0 0 0</pose>
+      <static>true</static>
+      <link name="body">
+      <collision name="collision">
+        <geometry>
+          <plane>
+            <normal>0 0 1</normal>
+            <size>500 500</size>
+          </plane>
+        </geometry>
+      </collision>
+        <visual name="visual">
+          <geometry>
+            <mesh><uri>farlain.dae</uri></mesh>
+          </geometry>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

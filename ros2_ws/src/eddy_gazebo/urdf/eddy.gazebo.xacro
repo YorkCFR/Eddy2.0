@@ -1,0 +1,147 @@
+<?xml version="1.0"?>
+<xacro:arg name="robot_name" default="chair" />
+<xacro:property name="robot_name" value="$(arg name)" />
+
+<robot name="eddy_sim" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  
+  <!-- so we use the ros planar move plugin as it is general if unrealistic -->
+  <gazebo>
+    <plugin name="object_controller" filename="libgazebo_ros_planar_move.so">
+      <commandTopic>/eddy/cmd_vel</commandTopic>
+      <odometryTopic>/eddy/odom</odometryTopic>
+      <odometryFrame>odom</odometryFrame>
+      <odometryRate>20.0</odometryRate>
+      <robotBaseFrame>base_footprint</robotBaseFrame>
+    </plugin>
+  </gazebo>
+
+
+  <gazebo>
+    <plugin name="gps_controller" filename="libhector_gazebo_ros_gps.so">
+      <alwayson>true</alwayson>
+      <updaterate>20.0</updaterate>
+      <bodyname>gps_link</bodyname>
+      <frameId>gps_link</frameId>
+      <referenceLatitude>$(arg gps_latitude_origin)</referenceLatitude>
+      <referenceLongitude>$(arg gps_longitude_origin)</referenceLongitude>
+      <drift>1.0 1.0 1.0</drift>
+      <topicName>/eddy/sensors/gps/fix</topicName>
+    </plugin>
+  </gazebo>
+
+
+	<!-- If you want drift and such below params cane be added to plugin above.
+<gazebo>
+	<plugin name="gps_controller" filename="libhector_gazebo_ros_gps.so">
+		<alwayson>true</alwayson>
+		<updaterate>10.0</updaterate>
+		<bodyname>base_link</bodyname>
+		<topicname>/eddy/gps/fix</topicname>
+		<velocitytopicname>/eddy/gps/vel</velocitytopicname>
+		<drift>5.0 5.0 5.0</drift>
+		<gaussiannoise>0.1 0.1 0.1</gaussiannoise>
+		<velocitydrift>0 0 0</velocitydrift>
+		<velocitygaussiannoise>0.1 0.1 0.1</velocitygaussiannoise>
+	</plugin>
+</gazebo>
+	-->
+
+  <!-- Camera -->
+  <gazebo reference="down_camera_link">
+    <sensor type="camera" name="camera_underwater">
+      <update_rate>30.0</update_rate>
+      <camera name="head">
+        <horizontal_fov>1.3962634</horizontal_fov>
+        <image>
+          <width>640</width>
+          <height>480</height>
+          <format>R8G8B8</format>
+        </image>
+        <clip>
+          <near>0.02</near>
+          <far>30</far>
+        </clip>
+        <noise>
+          <type>gaussian</type>
+          <mean>0.0</mean>
+          <stddev>0.002</stddev>
+        </noise>
+      </camera>
+      <plugin name="camera_controller" filename="libgazebo_ros_camera.so">
+        <alwaysOn>true</alwaysOn>
+        <updateRate>30.0</updateRate>
+        <cameraName>/eddy/sensors/underwater_camera</cameraName>
+        <imageTopicName>image_raw</imageTopicName>
+        <cameraInfoTopicName>camera_info</cameraInfoTopicName>
+        <compressedImageTopicName>compressed</compressedImageTopicName>
+        <frameName>down_camera_link</frameName>
+        <hackBaseline>0.07</hackBaseline>
+        <distortionK1>0.0</distortionK1>
+        <distortionK2>0.0</distortionK2>
+        <distortionK3>0.0</distortionK3>
+        <distortionT1>0.0</distortionT1>
+        <distortionT2>0.0</distortionT2>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- Sensor frames  -->
+
+  <!-- IMU frame  -->
+  <gazebo reference="imu_link">
+    <gravity>true</gravity>
+    <sensor name="imu_sensor" type="imu">
+      <pose>0 0 0 0 0 0</pose>
+      <always_on>true</always_on>
+      <update_rate>100</update_rate>
+      <visualize>true</visualize>
+      <topic>/eddy/sensors/mavros/imu/data</topic>
+      <plugin filename="libgazebo_ros_imu_sensor.so" name="imu_plugin">
+        <topicName>/eddy/sensors/mavros/imu/data</topicName>
+        <bodyName>imu_link</bodyName>
+        <updateRateHZ>10.0</updateRateHZ>
+        <gaussianNoise>0.1</gaussianNoise>
+        <xyzOffset>${imu_offset_x} ${imu_offset_y} ${imu_offset_z}</xyzOffset>
+        <rpyOffset>0 0 0</rpyOffset>
+        <frameName>imu_link</frameName>
+        <initialOrientationAsReference>false</initialOrientationAsReference>
+      </plugin>
+    </sensor>
+  </gazebo>
+
+  <!-- Sonar frame  -->
+  <gazebo reference="sonar_link">
+    <sensor type="ray" name="sonar">
+      <pose>0 0 0 0 0 0</pose>
+      <visualize>true</visualize>
+      <update_rate>1.0</update_rate>
+      <ray>
+        <scan>
+          <horizontal>
+            <samples>1</samples>
+            <resolution>1</resolution>
+            <min_angle>0</min_angle>
+            <max_angle>0</max_angle>
+          </horizontal>
+          <vertical>
+            <samples>1</samples>
+            <resolution>1</resolution>
+            <min_angle>0</min_angle>
+            <max_angle>0</max_angle>
+          </vertical>
+        </scan>
+        <range>
+          <min>0.6</min>
+          <max>140</max>
+          <resolution>0.1</resolution>
+        </range>
+      </ray>
+      <plugin name="sonar_plugin" filename="libgazebo_ros_range.so">
+        <topicName>/eddy/sensors/sonar/distance</topicName>
+        <frameName>sonar_link</frameName>
+        <updateRate>1</updateRate>
+        <radiation>ultrasound</radiation>
+      </plugin>
+    </sensor>
+  </gazebo>
+</robot>
