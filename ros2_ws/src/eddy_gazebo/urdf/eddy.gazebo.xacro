@@ -1,8 +1,12 @@
 <?xml version="1.0"?>
-<xacro:arg name="robot_name" default="chair" />
-<xacro:property name="robot_name" value="$(arg name)" />
 
-<robot name="eddy_sim" xmlns:xacro="http://www.ros.org/wiki/xacro">
+<robot name="$(arg robot_name)" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="gps_latitude_origin" default="43.77067122214868" />
+  <xacro:property name="gps_latitude_origin" value="$(arg gps_latitude_origin)" />
+  <xacro:arg name="gps_longitude_origin" default="-79.50699748853243" />
+  <xacro:property name="gps_longitude_origin" value="$(arg gps_longitude_origin)" />
+  <xacro:arg name="imu_offset_x" default="0" />
+  <xacro:property name="imu_offset_x" value="$(arg imu_offset_x)" />
   
   <!-- so we use the ros planar move plugin as it is general if unrealistic -->
   <gazebo>
