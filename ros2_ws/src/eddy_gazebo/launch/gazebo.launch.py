@@ -10,12 +10,11 @@ import xacro
 def generate_launch_description():
     urdf = os.path.join(get_package_share_directory('eddy_gazebo'), 'eddy.gazebo.xacro')
     print(urdf)
-    robot_desc = xacro.process_file(urdf).toxml()
-#, mappings={
-#        'robot_name' : 'eddy2a',
-#        'gps_latitude_origin' : '43.77067122214868',
-#        'gps_longitude_origin' : '-79.50699748853243'
-#        }).toxml()
+    robot_desc = xacro.process_file(urdf , mappings={
+        'robot_name' : 'eddy2a',
+        'gps_latitude_origin' : '43.77067122214868',
+        'gps_longitude_origin' : '-79.50699748853243'
+        }).toxml()
     print(robot_desc)
 
     return LaunchDescription([

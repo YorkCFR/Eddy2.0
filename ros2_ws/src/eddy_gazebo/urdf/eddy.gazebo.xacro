@@ -7,6 +7,10 @@
   <xacro:property name="gps_longitude_origin" value="$(arg gps_longitude_origin)" />
   <xacro:arg name="imu_offset_x" default="0" />
   <xacro:property name="imu_offset_x" value="$(arg imu_offset_x)" />
+  <xacro:arg name="imu_offset_y" default="0" />
+  <xacro:property name="imu_offset_y" value="$(arg imu_offset_y)" />
+  <xacro:arg name="imu_offset_z" default="0" />
+  <xacro:property name="imu_offset_z" value="$(arg imu_offset_z)" />
   
   <!-- so we use the ros planar move plugin as it is general if unrealistic -->
   <gazebo>
