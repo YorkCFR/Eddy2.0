@@ -1,0 +1,126 @@
+<?xml version="2.0" ?>
+<robot name="eddy" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- All offsets are placeholder values ATM -->
+  <xacro:property name="thruster_offset_y" value="0.08"/>
+  <xacro:property name="thruster_offset_z" value="0.023"/>
+
+  <xacro:property name="imu_offset_x" value="-0.032"/>
+  <xacro:property name="imu_offset_y" value="0.0"/>
+  <xacro:property name="imu_offset_z" value="0.068"/>
+
+  <xacro:property name="gps_offset_x" value="-0.032"/>
+  <xacro:property name="gps_offset_y" value="0.0"/>
+  <xacro:property name="gps_offset_z" value="0.068"/>
+
+  <xacro:property name="sonar_offset_x" value="-0.032"/>
+  <xacro:property name="sonar_offset_y" value="0.0"/>
+  <xacro:property name="sonar_offset_z" value="-0.4"/>
+
+  <xacro:property name="down_camera_offset_x" value="0.0"/>
+  <xacro:property name="down_camera_offset_y" value="0.0"/>
+  <xacro:property name="down_camera_offset_z" value="-0.4"/>
+
+  <xacro:property name="buoyancy_offset_z" value="0.010" />
+  <xacro:property name="buoyancy_box_x" value="1.5" />
+  <xacro:property name="buoyancy_box_y" value="4.0" />
+  <xacro:property name="buoyancy_box_z" value="0.23" />
+  <xacro:property name="eddy_mass" value="20.0" />
+
+  <xacro:property name="gps_latitude_origin" value="$(arg gps_latitude_origin)" />
+  <xacro:property name="gps_longitude_origin" value="$(arg gps_longitude_origin)" />
+
+  <xacro:macro name="I_cuboid" params="m x y z">
+    <inertial>
+      <mass value="${m}" />
+      <inertia  ixx="${m*(y*y+z*z)/12}" iyy="${m*(x*x+z*z)/12}" izz="${m*(x*x+z*z)/12}"
+                ixy = "0" ixz = "0" iyz = "0" />
+    </inertial>
+  </xacro:macro>
+
+
+  <xacro:include filename="$(find eddy_gazebo)/eddy.gazebo.xacro"/>
+
+  <link name="base_footprint">
+  </link>
+
+  <joint name="base_joint" type="fixed">
+    <parent link="base_footprint"/>
+    <child link="base_link"/>
+    <origin xyz="0.0 0.0 ${buoyancy_offset_z}" rpy="0 0 0"/>
+    <axis xyz="0 0 1" />
+  </joint>
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 -1.57"/>
+      <geometry>
+       <mesh filename="package://eddy_description/eddy.dae" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 -1.57"/>
+      <geometry>
+       <box size="${buoyancy_box_x} ${buoyancy_box_y} ${buoyancy_box_z}" />
+      </geometry>
+    </collision>
+    <xacro:I_cuboid m="${eddy_mass}" x="${buoyancy_box_x}" y="${buoyancy_box_y}" z="${buoyancy_box_z}" />
+  </link>
+
+  <!-- Accutuated Joint (Thruster Blades) -->
+
+  <!-- Left Thruster -->
+  <link name="thruster_left_link">
+  </link>
+  <joint name="thruster_left_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="thruster_left_link"/>
+    <origin xyz="0.0 ${thruster_offset_y} ${thruster_offset_z}" rpy="-1.57 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+
+  <!-- Right Thruster -->
+  <link name="thruster_right_link">
+  </link>
+  <joint name="thruster_right_joint" type="continuous">
+    <parent link="base_link"/>
+    <child link="thruster_right_link"/>
+    <origin xyz="0.0 ${-1 * thruster_offset_y} ${thruster_offset_z}" rpy="-1.57 0 0"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+  <!-- Sensor frames  -->
+
+  <!-- IMU frame  -->
+  <link name="imu_link"/>
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <origin xyz="${imu_offset_x} ${imu_offset_y} ${imu_offset_z}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- GPS frame  -->
+  <link name="gps_link"/>
+  <joint name="gps_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="gps_link"/>
+    <origin xyz="${gps_offset_x} ${gps_offset_y} ${gps_offset_z}" rpy="0 0 0"/>
+  </joint>
+
+  <!-- Sonar frame  -->
+  <link name="sonar_link"/>
+  <joint name="sonar_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="sonar_link"/>
+    <origin xyz="${sonar_offset_x} ${sonar_offset_y} ${sonar_offset_z}" rpy="0 1.57 0"/>
+  </joint>
+
+  <!-- Downward facing camera frame  -->
+  <link name="down_camera_link"/>
+  <joint name="down_camera_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="down_camera_link"/>
+    <origin xyz="${down_camera_offset_x} ${down_camera_offset_y} ${down_camera_offset_z}" rpy="0 1.57 0"/>
+  </joint>
+</robot>

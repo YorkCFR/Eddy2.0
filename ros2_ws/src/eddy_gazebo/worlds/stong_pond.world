@@ -4,6 +4,13 @@
     <include>
       <uri>model://sun</uri>
     </include>
+    <spherical_coordinates>
+      <surface_model>EARTH_WGS84</surface_model>
+      <latitude_deg>43.77</latitude_deg>
+      <longitude_deg>-79.51</longitude_deg>
+      <elevation>0</elevation>
+      <heading_deg>0</heading_deg>
+    </spherical_coordinates>
     <model name="Stong_Pond">
       <pose>0 0 0  0 0 0</pose>
       <static>true</static>
@@ -23,5 +30,29 @@
         </visual>
       </link>
     </model>
+   <model name="muddy_bottom">
+      <pose>0 0 -10  0 0 0</pose>
+      <static>true</static>
+      <link name="mud">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>500 500</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>500 500</size>
+            </plane>
+          </geometry>
+          <material>Gazebo/Black</material>
+        </visual>
+      </link>
+    </model>
+
   </world>
 </sdf>

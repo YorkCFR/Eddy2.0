@@ -8,18 +8,41 @@
       <pose>0 0 0  0 0 0</pose>
       <static>true</static>
       <link name="body">
-      <collision name="collision">
-        <geometry>
-          <plane>
-            <normal>0 0 1</normal>
-            <size>500 500</size>
-          </plane>
-        </geometry>
-      </collision>
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>500 500</size>
+            </plane>
+           </geometry>
+        </collision>
         <visual name="visual">
           <geometry>
             <mesh><uri>farlain.dae</uri></mesh>
           </geometry>
+        </visual>
+      </link>
+    </model>
+    <model name="muddy_bottom">
+      <pose>0 0 -10  0 0 0</pose>
+      <static>true</static>
+      <link name="mud">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>500 500</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>500 500</size>
+            </plane>
+          </geometry>
+          <material>Gazebo/Grey</material>
         </visual>
       </link>
     </model>
