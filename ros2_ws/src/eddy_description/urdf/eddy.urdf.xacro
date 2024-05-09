@@ -72,7 +72,7 @@
   <!-- Left Thruster -->
   <link name="thruster_left_link">
   </link>
-  <joint name="thruster_left_joint" type="continuous">
+  <joint name="thruster_left_joint" type="fixed">
     <parent link="base_link"/>
     <child link="thruster_left_link"/>
     <origin xyz="0.0 ${thruster_offset_y} ${thruster_offset_z}" rpy="-1.57 0 0"/>
@@ -83,7 +83,7 @@
   <!-- Right Thruster -->
   <link name="thruster_right_link">
   </link>
-  <joint name="thruster_right_joint" type="continuous">
+  <joint name="thruster_right_joint" type="fixed">
     <parent link="base_link"/>
     <child link="thruster_right_link"/>
     <origin xyz="0.0 ${-1 * thruster_offset_y} ${thruster_offset_z}" rpy="-1.57 0 0"/>

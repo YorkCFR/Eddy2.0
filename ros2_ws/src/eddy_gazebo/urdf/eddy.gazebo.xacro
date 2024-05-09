@@ -27,7 +27,7 @@
         <namespace>/${robot_name}</namespace>
       </ros>
       <command_topic>/$(arg robot_name)/cmd_vel</command_topic>
-      <odometryTopic>/$(arg robot_name)/odom</odometryTopic>
+      <odometryTopic>/$(arg robot_name)/odometry</odometryTopic>
       <robot_base_frame>$(arg robot_name)/base_footprint</robot_base_frame>
       <odometry_frame>$(arg robot_name)/odom</odometry_frame>
     </plugin>
@@ -43,6 +43,7 @@
           <namespace>/$(arg robot_name)</namespace>
           <remapping>gps_controller/out:=gps</remapping>
         </ros>
+        <frame_name>$(arg robot_name)/base_footprint</frame_name>
       </plugin>
     </sensor>
   </gazebo>
@@ -61,6 +62,7 @@
           <namespace>/$(arg robot_name)</namespace>
           <remapping>~/out:=imu</remapping>
         </ros>
+        <frame_name>$(arg robot_name)/base_footprint</frame_name>
       </plugin>
     </sensor>
   </gazebo>

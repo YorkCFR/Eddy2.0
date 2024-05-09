@@ -14,6 +14,7 @@ def generate_launch_description():
     urdf = os.path.join(get_package_share_directory('eddy_description'), 'eddy.urdf.xacro')
     robot_description = xacro.process_file(urdf , mappings={ 'robot_name' : 'Eddy2a' }).toxml()
     robot_state_publisher = Node(
+             namespace = 'Eddy2a',
              package='robot_state_publisher',
              executable='robot_state_publisher',
              name='robot_state_publisher',
@@ -36,7 +37,7 @@ def generate_launch_description():
              executable='spawn_entity.py',
              name='urdf_spawner',
              output='screen',
-             arguments=["-topic", "/robot_description",  "-entity",  "Eddy2a"])
+             arguments=["-topic", "Eddy2a/robot_description",  "-entity",  "Eddy2a"])
 
     return LaunchDescription([
         gazebo_launch, 
