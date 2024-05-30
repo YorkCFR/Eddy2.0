@@ -20,10 +20,11 @@ class WebUI(Node):
         self.declare_parameter('root', "/home/jenkin/Documents/Eddy2.0/ros2_ws/src/eddy_webui/www/")
         root = self.get_parameter('root').get_parameter_value().string_value
 
-        self.declare_parameter('port', 8081)
+        self.declare_parameter('port', 8080)
         port = self.get_parameter('port').get_parameter_value().integer_value
 
         Handler.ROOT = root
+        self.get_logger().info(f'{self.get_name()} starting to serve from {Handler.ROOT} on port {port}')
         with socketserver.TCPServer(("", port), Handler) as httpd:
             self.get_logger().info(f'{self.get_name()} serving')
             httpd.serve_forever()
