@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Robert Codd-Downey">
+    <meta name="generator" content="Jekyll v4.1.1">
+    <title>Eddy Dashboard</title>
+
+    <script src="./javascript/eventemitter2.js"></script>
+    <script src="./javascript/roslib.min.js"></script>
+    <script src="./javascript/jpg.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="./css/leaflet.css" />
+    <script src="./javascript/leaflet.js"></script>
+
+    <script src="./javascript/sql.js"></script>
+    <script src="./javascript/Leaflet.TileLayer.MBTiles.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="./css/leaflet.draw.css" />
+    <script src="./javascript/leaflet.draw.js"></script>
+
+    <script src="./javascript/dashboard.js"></script>
+
+    <script type="text/javascript">
+      'use strict';
+
+      var map = null;
+      var map_control = null;
+      var marker_position = null;
+      var path = [];
+      var polyline_path = null;
+      var drawnItems = null;
+      
+      var mission_path = null;
+      var gps_polyline_path = null;
+      
+	function drawProposedPath(message) {
+		if (map == null) {
+			return;
+		}
+		
+		if (gps_polyline_path != null) {
+			map.removeLayer(gps_polyline_path);
+			gps_polyline_path = null;
+		}
+		gps_polyline_path = L.polyline(path, { color: '#000' }).addTo(map);
+	}
+
+      function updateGpsPath(message) {
+        path.push([message.latitude, message.longitude]);
+
+        if (map == null) {
+          return;
+        }
+
+        if (marker_position != null) {
+          map.removeLayer(marker_position);
+          polyline_path = null;
+        }
+        marker_position = L.marker([message.latitude, message.longitude]).addTo(map);
+        
+        if (polyline_path != null) {
+          map.removeLayer(polyline_path);
+          polyline_path = null;
+        }
+        polyline_path = L.polyline(path, { color: '#000' }).addTo(map);
+      }
+      
+      if (!robot) {
+        var robot = {
+          ros: null,
+          gps_sub : null,
+          name: "",
+	  init: function() {
+            var host = null;
+            if(location.hostname === "")
+              host = "ws://127.0.0.1:9090";
+            else
+              host = 'ws://' + location.hostname + ':9090';
+            this.ros = new ROSLIB.Ros({
+              url : host
+            });
+						this.ros.on('error', function(error) {
+							updateRosStatus('error');
+						});
+						this.ros.on('connection', function(error) {
+							updateRosStatus('connection');
+						});
+						this.ros.on('close', function(error) {
+							updateRosStatus('close');
+						});
+		this.saved_missions = new ROSLIB.Param({
+                	ros : this.ros,
+                	name : "/mission_controller/saved_missions"
+            	});
+            this.gps_sub = new ROSLIB.Topic({
+	      ros : this.ros,
+              name : '/eddy/sensors/gps/fix',
+              messageType : 'sensor_msgs/NavSatFix'
+            });
+            this.gps_path_sub = new ROSLIB.Topic({
+              ros : this.ros,
+              name : "/mission_controller/gps_path",
+              messageType : "nav_msgs/Path"
+            });
+	   this.mission_delete = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/mission/delete',
+                serviceType : 'rosapi/DeleteParam'
+            });
+           this.mission_start = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/mission/start',
+                serviceType : 'rosapi/DeleteParam'
+            });
+           this.mission_save = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/mission/save',
+                serviceType : 'rosapi/SetParam'
+            });
+           this.mission_load = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/mission/load',
+                serviceType : 'rosapi/GetParam'
+            });
+            this.gps_path_sub.subscribe(function (message) {
+            });
+            this.gps_sub.subscribe(function (message) {
+              console.log("Recived a NavSatFix message");
+              updateGpsPath(message);
+
+              var label = document.getElementById("location-label");
+              var lat = parseFloat(message.latitude).toFixed(4);              var lon = parseFloat(message.longitude).toFixed(4);
+
+              label.innerHTML = "- Lat: " + lat + " Lon: " + lon;
+              
+              // map.setView([lat, lon], map.getZoom());
+	    });
+	  }
+        }
+      }
+      robot.init();
+
+	function updateMissionView(name, value) {
+		if (value == "") {
+			return;
+		}
+
+		drawnItems.clearLayers();
+
+		 $("#mission-text").val(name);
+		 $("#save-btn").removeClass("disabled");
+		 $("#start-btn").removeClass("disabled");
+
+		for (var i = 0; i < value.length; i++) {
+			var polygon = new L.polygon(value[i]);
+			drawnItems.addLayer(polygon);
+		}
+
+		map.removeControl(map_control);
+
+                map_control = new L.Control.Draw({
+                        edit: {
+                                featureGroup: drawnItems,
+                                poly: {
+                                        allowIntersection: false
+                                }
+                        },
+                        draw: false
+                });
+
+                map.addControl(map_control);
+	}
+
+	function updateMissionList() {
+		robot.saved_missions.get(function (missions) {
+			window.missions = missions;
+			
+			if (!Array.isArray(missions)) {
+				return;
+			}
+			var body = document.getElementById("mission-list");
+			body.innerHTML = "";
+			for (var i = 0; i < missions.length; i++) {
+				var new_code = "<tr>";
+				new_code += "<td class=\"align-middle\">" + missions[i] + "</td>";
+				new_code += "<td>";
+				new_code += "<button id=\"" + i + "\" class=\"btn btn-sm btn-primary mission-load\" type=\"button\">Load</button>";
+				new_code += "<button id=\"" + i + "\" class=\"btn btn-sm btn-danger ml-1 mission-delete\" type=\"button\"><span data-feather=\"trash-2\"></span></button>";
+				new_code += "</td>";
+				new_code += "</tr>";
+				body.innerHTML += new_code;
+			}
+			$(".mission-load").click(function () {
+				var idx = parseInt($(this).attr('id'));
+				var request = new ROSLIB.ServiceRequest({ name : window.missions[idx], default : "" });
+				robot.mission_load.callService(request, function (result) {
+					updateMissionView(window.missions[idx], JSON.parse(result.value));
+				});
+			});
+			$(".mission-delete").click(function () {
+				var idx = parseInt($(this).attr('id'));
+				var request = new ROSLIB.ServiceRequest({ name : window.missions[idx] });
+				robot.mission_delete.callService(request, function (result) {
+					updateMissionList();
+				});
+			});
+			feather.replace();
+		});
+	}
+
+	window.onload = function () {
+	buildDashboard("Mission Planner");
+	feather.replace();
+	onLoadROS(robot.ros);
+
+	updateMissionList();
+
+	$("#mission-text").change(function () {
+		var items = Object.values(drawnItems._layers);
+		if ($(this).val() != "" && items.length != 0) {
+			$("#save-btn").removeClass("disabled");
+		} else {
+			$("#save-btn").addClass("disabled");
+		}
+	});
+
+	$("#start-btn").click(function () {
+	});
+
+	$("#save-btn").click(function () {
+		var items = Object.values(drawnItems._layers);
+
+		var shapes = [];
+		for (var i = 0; i < items.length; i++) {
+			var coordinates = items[i]._latlngs[0];
+
+			var vertices = [];
+			for (var j = 0; j < coordinates.length; j++) {
+				var point = [coordinates[j].lat, coordinates[j].lng];
+				vertices.push(point);
+			}
+			shapes.push(vertices);
+		}
+
+		var request = new ROSLIB.ServiceRequest({
+			name : $("#mission-text").val(),
+			value : JSON.stringify(shapes)
+		}); 
+		robot.mission_save.callService(request, function (result) {
+			$("#start-btn").removeClass("disabled");
+			updateMissionList();
+		});
+        });
+
+	L.Icon.Default.imagePath = "http://" + location.host + "/css/images/"
+	L.Icon.Default.prototype.options = {
+		iconRetinaUrl: "marker-icon-2x.png",
+  		iconUrl: "marker-icon.png",
+  		shadowUrl: "marker-shadow.png"
+	};
+
+	map = new L.Map('mapid')
+
+	var mb = L.tileLayer.mbTiles('./assets/stong_pond.mbtiles', {
+		minZoom: 15,
+		maxZoom: 21
+	}).addTo(map);
+
+	map.setView([43.7712, -79.5070], 17);
+
+	drawnItems = new L.FeatureGroup();
+     	map.addLayer(drawnItems);
+
+	mb.on('databaseloaded', function(ev) {
+		console.info('MBTiles DB loaded', ev);
+	});
+	mb.on('databaseerror', function(ev) {
+		console.info('MBTiles DB error', ev);
+	});
+
+	map_control = new L.Control.Draw({
+		edit: {
+			featureGroup: drawnItems,
+			poly: {
+				allowIntersection: false
+			}
+		},
+		draw: {
+			polygon: {
+				allowIntersection: false,
+				showArea: true
+			},
+			polyline : false,
+			circle : false,
+			circlemarker : false,
+			marker : true
+		}
+	});
+
+	map.addControl(map_control);
+
+	map.on(L.Draw.Event.CREATED, function (event) {
+		var layer = event.layer;
+
+		drawnItems.addLayer(layer);
+
+		map.removeControl(map_control);
+
+		map_control = new L.Control.Draw({
+			edit: {
+				featureGroup: drawnItems,
+				poly: {
+					allowIntersection: false
+				}
+			},
+			draw: false
+		});
+
+		map.addControl(map_control);
+
+                var items = Object.values(drawnItems._layers);
+                if ($("#mission-text").val() != "" && items.length != 0) {
+                        $("#save-btn").removeClass("disabled");
+                } else {
+                        $("#save-btn").addClass("disabled");
+                }
+    	});
+
+	map.on(L.Draw.Event.EDITED, function (event) {
+		$("#start-btn").addClass("disabled");
+	});
+
+	map.on(L.Draw.Event.DELETED, function (event) {
+		var layer = event.layer;
+
+		map.removeControl(map_control);
+
+		map_control = new L.Control.Draw({
+          		edit: {
+            			featureGroup: drawnItems,
+            			poly: {
+              				allowIntersection: false
+            			}
+          		},
+          		draw: {
+            			polygon: {
+              				allowIntersection: false,
+              				showArea: true
+            			},
+            			polyline : false,
+            			circle : false,
+            			circlemarker : false,
+				marker : false
+          		}
+        	});
+
+        	map.addControl(map_control);
+
+                var items = Object.values(drawnItems._layers);
+                if ($("#mission-text").val() != "" && items.length != 0) {
+                        $("#save-btn").removeClass("disabled");
+                } else {
+                        $("#save-btn").addClass("disabled");
+                }
+	});
+
+      }
+
+      window.onunload = function () {
+        robot.ros.close();
+      };
+    </script>
+
+    <!-- Bootstrap core CSS -->
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+      .bd-placeholder-img {
+        font-size: 1.125rem;
+        text-anchor: middle;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+/*
+      .card {
+	width: 35rem;
+      }
+*/
+      #mapid {
+        height: 20rem;
+	width: 15rem;
+      }
+
+td {
+  text-align: center;
+}
+
+      @media (min-width: 768px) {
+        .bd-placeholder-img-lg {
+          font-size: 3.5rem;
+        }
+      }
+    </style>
+    <!-- Custom styles for this template -->
+    <link href="./css/dashboard.css" rel="stylesheet">
+  </head>
+  <body>
+
+        <nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+                <div class="navbar-brand"/>
+                        <div class="navbar-item ml-3 mr-3" style="color:white;">
+                        Eddy <span id="ros-status" class="badge badge-warning">Connecting</span>
+                        <button type="button" class="btn ml-4 btn-sm btn-danger"  data-toggle="modal" data-target="#shutdownModal">Shutdown</button>
+                        </div>
+                </div>
+                <button class="navbar-toggler position-absolute d-md-none collapsed mt-1" type="button" data-toggle="collapse" data-target="#sidebarMenu" ar>
+                        <span class="navbar-toggler-icon"></span>
+                </button>
+        </nav>
+
+        <div class="modal fade" id="shutdownModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                        <div class="modal-content">
+                                <div class="modal-header">
+                                        <h5 class="modal-title" id="exampleModalLabel">Shutdown Eddy</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                        </button>
+                                </div>
+                                <div class="modal-body">
+                                        Are you sure you want shutdown the robot ?
+                                </div>
+                                <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                        <button type="button" id="ros-halt" class="btn btn-danger" data-dismiss="modal">Shutdown</button>
+                                </div>
+                        </div>
+                </div>
+        </div>
+
+<div class="container-fluid">
+  <div class="row">
+    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+      <div class="sidebar-sticky pt-3">
+        <ul id="main_nav" class="nav flex-column">
+        </ul>
+
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+          <span>Extras</span>
+          <a class="d-flex align-items-center text-muted" href="#" aria-label="Add a new report">
+            <span data-feather="plus-circle"></span>
+          </a>
+        </h6>
+
+        <ul id="extra_nav" class="nav flex-column">
+        </ul>
+
+      </div>
+    </nav>
+
+    <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-md-4">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+      </div>
+
+      <div class="row">
+        <div class="column">
+          <div class="card mb-2" >
+            <div class="card-header">GPS <span id="location-label">- Lat:0.0 Lon:0.0</div>
+            <div class="card-body">
+              <div id="mapid" class="w-100 shadow-sm"></div>
+
+                <div class="btn-toolbar mt-3 justify-content-between" role="toolbar">
+                        <div class="input-group input-group-sm mr-1">
+                                <input type="text" class="form-control" placeholder="mission.yaml" id="mission-text">
+                                <button class="btn btn-secondary disabled" type="button" id="save-btn"><span data-feather="save"></span></button>
+                        </div>
+                        <button id="start-btn" type="button" class="btn btn-success disabled btn-sm ml-1">Start</button>
+                </div>
+
+	<div class="container mt-3">
+		<div class="row">
+			<div class="col-12">
+				<table class="table table-bordered">
+					<thead>
+						<tr>
+							<th scope="col">Mission Name</th>
+							<th scope="col">Actions</th>
+						</tr>
+					</thead>
+					<tbody id="mission-list">
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+<script src="./javascript/jquery-3.5.1.slim.min.js"></script>
+<script src="./javascript/bootstrap.bundle.min.js"></script>
+<script src="./javascript/feather.min.js"></script>
+
+<script type="text/javascript">
+  feather.replace()
+</script>
+
+</body>
+</html>

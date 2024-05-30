@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Robert Codd-Downey">
+    <meta name="generator" content="Jekyll v4.1.1">
+    <title>Eddy Dashboard</title>
+
+    <script src="./javascript/eventemitter2.js"></script>
+    <script src="./javascript/roslib.min.js"></script>
+    <script src="./javascript/jpg.js"></script>
+    <script src="./javascript/dashboard.js"></script>
+
+    <script type="text/javascript">
+      'use strict';
+			
+			if (!robot) {
+				var robot = {
+					ros: null,
+					name: "",
+					init: function() {
+						this.ros = new ROSLIB.Ros({
+					              url : 'ws://' + location.hostname + ':9090'
+            					});
+
+						this.ros.on('error', function(error) {
+							updateRosStatus('error');
+						});
+						this.ros.on('connection', function(error) {
+							updateRosStatus('connection');
+						});
+						this.ros.on('close', function(error) {
+							updateRosStatus('close');
+						});
+
+				                this.light = new ROSLIB.Topic({
+							ros : this.ros,
+							name : '/eddy/light',
+							messageType : 'std_msgs/Float32'
+						});
+	    this.light.advertise();
+            this.light.subscribe(function (message) {
+              console.log("Recieved light message");
+              var progress = document.getElementById("light-status-bar");
+              var width = Math.round(message.data * 100).toString();
+              progress.style.width = width + "%";
+              progress.innerHTML = width + "%";
+
+              var light_btn = document.getElementById("light-btn");
+              if (message.data > 0.0) {
+                light_btn.innerHTML = "OFF";
+                light_btn.classList.remove("btn-light");
+                light_btn.classList.add("btn-dark");
+              } else {
+                light_btn.innerHTML = "ON";
+                light_btn.classList.add("btn-light");
+                light_btn.classList.remove("btn-dark");
+              }
+            });
+            this.light.publish(new ROSLIB.Message({ data : 0.0 }));
+					}
+				}
+			}
+			
+			robot.init();
+
+      window.onload = function () {
+	buildDashboard("Light");
+	feather.replace();
+	onLoadROS(robot.ros);
+
+        var light_btn = document.getElementById("light-btn");
+				light_btn.onclick = function () {
+					if (light_btn.innerText == "ON") {
+            light_btn.classList.add("btn-dark");
+            light_btn.classList.remove("btn-light");
+            light_btn.innerText = "OFF";
+            robot.light.publish(new ROSLIB.Message({
+							data : 1.0
+						}));
+          } else if (light_btn.innerText == "OFF") {
+            light_btn.classList.remove("btn-dark");
+            light_btn.classList.add("btn-light");
+            light_btn.innerText = "ON";
+            robot.light.publish(new ROSLIB.Message({
+							data : 0.0
+						}));
+          }
+				};
+
+        var light_decrease_btn = document.getElementById("light-decrease-btn");
+        light_decrease_btn.onclick = function () {
+          var progress = document.getElementById("light-status-bar");
+          var val = parseFloat(progress.innerHTML) / 100;
+          robot.light.publish(new ROSLIB.Message({
+							data : Math.max(val - 0.05, 0.0)
+					}));
+        }
+
+        var light_increase_btn = document.getElementById("light-increase-btn");
+        light_increase_btn.onclick = function () {
+          var progress = document.getElementById("light-status-bar");
+          var val = parseFloat(progress.innerHTML) / 100;
+          robot.light.publish(new ROSLIB.Message({
+							data : Math.min(val + 0.05, 1.0)
+					}));
+        }
+      }
+
+      window.onunload = function () {
+				robot.ros.close();
+			};
+    </script>
+
+    <!-- Bootstrap core CSS -->
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+      .bd-placeholder-img {
+        font-size: 1.125rem;
+        text-anchor: middle;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+
+      @media (min-width: 768px) {
+        .bd-placeholder-img-lg {
+          font-size: 3.5rem;
+        }
+      }
+    </style>
+    <!-- Custom styles for this template -->
+    <link href="./css/dashboard.css" rel="stylesheet">
+  </head>
+  <body>
+
+        <nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+                <div class="navbar-brand"/>
+                        <div class="navbar-item ml-3 mr-3" style="color:white;">
+                        Eddy <span id="ros-status" class="badge badge-warning">Connecting</span>
+                        <button type="button" class="btn ml-4 btn-sm btn-danger"  data-toggle="modal" data-target="#shutdownModal">Shutdown</button>
+                        </div>
+                </div>
+                <button class="navbar-toggler position-absolute d-md-none collapsed mt-1" type="button" data-toggle="collapse" data-target="#sidebarMenu" ar>
+                        <span class="navbar-toggler-icon"></span>
+                </button>
+        </nav>
+
+        <div class="modal fade" id="shutdownModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                        <div class="modal-content">
+                                <div class="modal-header">
+                                        <h5 class="modal-title" id="exampleModalLabel">Shutdown Eddy</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                        </button>
+                                </div>
+                                <div class="modal-body">
+                                        Are you sure you want shutdown the robot ?
+                                </div>
+                                <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                        <button type="button" id="ros-halt" class="btn btn-danger" data-dismiss="modal">Shutdown</button>
+                                </div>
+                        </div>
+                </div>
+        </div>
+
+<div class="container-fluid">
+  <div class="row">
+    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+      <div class="sidebar-sticky pt-3">
+        <ul id="main_nav" class="nav flex-column">
+        </ul>
+
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+          <span>Extras</span>
+          <a class="d-flex align-items-center text-muted" href="#" aria-label="Add a new report">
+            <span data-feather="plus-circle"></span>
+          </a>
+        </h6>
+
+        <ul id="extra_nav" class="nav flex-column">
+        </ul>
+
+      </div>
+    </nav>
+
+    <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-md-4">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+      </div>
+
+      <div class="row">
+        <div class="column">
+          <div class="card mb-2" >
+            <div class="card-header">LED</div>
+              <div class="card-body">
+
+
+                <div class="btn-toolbar mb-3 justify-content-between" role="toolbar" aria-label="Toolbar with button groups">
+                
+                  <button id="light-btn" type="button" class="btn btn-light btn-sm">ON</button>
+
+                  <h5>Brightness</h5>
+
+                  <div class="btn-group mr-2" role="group">
+                    <button id="light-decrease-btn" type="button" class="btn btn-secondary btn-sm">-</button>
+                    <button id="light-increase-btn" type="button" class="btn btn-dark btn-sm">+</button>
+                  </div>
+
+                  <div class="progress mt-3" style="width: 100%;">
+                    <div id="light-status-bar" class="progress-bar" role="progressbar" style="width: 25%;" aria-valuenow="0.0" aria-valuemin="0.0" aria-valuemax="1.0">25%</div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+</div>
+<script src="./javascript/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+<script src="./javascript/bootstrap.bundle.min.js"></script>
+<script src="./javascript/feather.min.js"></script>
+<script src="./javascript/Chart.min.js"></script>
+
+<script type="text/javascript">
+  feather.replace()
+</script>
+
+<!--<script src="./javascript/dashboard.js"></script>-->
+</body>
+</html>

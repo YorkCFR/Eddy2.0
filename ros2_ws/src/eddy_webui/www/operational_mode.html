@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Robert Codd-Downey">
+    <meta name="generator" content="Jekyll v4.1.1">
+    <title>Eddy Dashboard</title>
+
+    <script src="./javascript/eventemitter2.js"></script>
+    <script src="./javascript/roslib.min.js"></script>
+    <script src="./javascript/jpg.js"></script>
+    <script src="./javascript/jquery-3.5.1.slim.min.js"></script>
+    <script src="./javascript/Chart.min.js"></script>
+    <script src="./javascript/dashboard.js"></script>
+
+    <script type="text/javascript">
+      'use strict';
+
+	function updateButton(state, id, waiting=false) {
+                var btn = document.getElementById(id);
+		if (waiting) {
+			btn.innerHTML = "WAITING";
+			btn.classList.remove("btn-success");
+			btn.classList.remove("btn-danger");
+			btn.classList.add("btn-warning");
+                } else if (state) {
+                        btn.innerHTML = "OFF";
+			btn.classList.remove("btn-warning");
+                        btn.classList.remove("btn-success");
+                        btn.classList.add("btn-danger");
+                } else {
+                        btn.innerHTML = "ON";
+			btn.classList.remove("btn-warning");
+                        btn.classList.remove("btn-danger");
+                        btn.classList.add("btn-success");
+                }
+	}
+
+	function updateRecordButton(value, id) {
+		var btn = document.getElementById(id);
+		if (value) {
+			btn.innerHTML = "Stop";
+			btn.classList.add("btn-secondary");
+			btn.classList.remove("btn-danger");
+		} else {
+			btn.innerHTML = "Record";
+			btn.classList.remove("btn-secondary");
+			btn.classList.add("btn-danger");
+		}
+	}
+
+	function updateParamButton(value, id) {
+                if (value == "force") {
+                        $("#teleop-force-btn").addClass("active");
+                        $("#teleop-velocity-btn").removeClass("active");
+                } else if (value == "velocity") {
+                        $("#teleop-velocity-btn").addClass("active");
+                        $("#teleop-force-btn").removeClass("active");
+                }
+	}
+			
+      if (!robot) {
+        var robot = {
+          ros: null,
+          name: "",
+          init: function() {
+            this.ros = new ROSLIB.Ros({
+              url : 'ws://' + location.hostname + ':9090'
+            });
+						this.ros.on('error', function(error) {
+							updateRosStatus('error');
+						});
+						this.ros.on('connection', function(error) {
+							updateRosStatus('connection');
+						});
+						this.ros.on('close', function(error) {
+							updateRosStatus('close');
+						});
+	    this.rosbag_prefix = new ROSLIB.Param({
+                ros : this.ros,
+                name : "/rosbag_recorder/bag_name"
+            });
+	    this.teleop_mode = new ROSLIB.Param({
+		ros : this.ros,
+		name : "/eddy/teleop_mode"
+	    });
+	    this.teleop_mode.get(function (value) {
+		updateParamButton(value);
+	    });
+            this.teleop_topic = new ROSLIB.Topic({
+                ros : this.ros,
+                name : '/roslaunch/eddy_teleop/running',
+                messageType : 'std_msgs/Bool'
+            });
+            this.teleop_topic.subscribe(function (msg) {
+                updateButton(msg.data, "teleop-btn");
+            });
+            this.teleop_start = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/roslaunch/eddy_teleop/start',
+                serviceType : 'std_srvs/Trigger'
+            });
+            this.teleop_stop = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/roslaunch/eddy_teleop/stop',
+                serviceType : 'std_srvs/Trigger'
+            });
+
+	    this.actuators_topic = new ROSLIB.Topic({
+		ros : this.ros,
+		name : '/roslaunch/eddy_actuators/running',
+		messageType : 'std_msgs/Bool'
+	    });
+	    this.actuators_topic.subscribe(function (msg) {
+		updateButton(msg.data, "actuators-btn");
+            });
+            this.actuators_start = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/roslaunch/eddy_actuators/start',
+                serviceType : 'std_srvs/Trigger'
+            });
+            this.actuators_stop = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/roslaunch/eddy_actuators/stop',
+                serviceType : 'std_srvs/Trigger'
+            });
+
+            this.sensors_topic = new ROSLIB.Topic({
+                ros : this.ros,
+                name : '/roslaunch/eddy_sensors/running',
+                messageType : 'std_msgs/Bool'
+            });
+            this.sensors_topic.subscribe(function (msg) {
+                updateButton(msg.data, "sensors-btn");
+            });
+            this.sensors_start = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/roslaunch/eddy_sensors/start',
+                serviceType : 'std_srvs/Trigger'
+            });
+            this.sensors_stop = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/roslaunch/eddy_sensors/stop',
+                serviceType : 'std_srvs/Trigger'
+            });
+
+            this.localization_topic = new ROSLIB.Topic({
+                ros : this.ros,
+                name : '/roslaunch/eddy_localization/running',
+                messageType : 'std_msgs/Bool'
+            });
+            this.localization_topic.subscribe(function (msg) {
+                updateButton(msg.data, "localization-btn");
+            });
+            this.localization_start = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/roslaunch/eddy_localization/start',
+                serviceType : 'std_srvs/Trigger'
+            });
+            this.localization_stop = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/roslaunch/eddy_localization/stop',
+                serviceType : 'std_srvs/Trigger'
+            });
+
+            this.navigation_topic = new ROSLIB.Topic({
+                ros : this.ros,
+                name : '/roslaunch/eddy_navigation/running',
+                messageType : 'std_msgs/Bool'
+            });
+            this.navigation_topic.subscribe(function (msg) {
+                updateButton(msg.data, "navigation-btn");
+            });
+            this.navigation_start = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/roslaunch/eddy_navigation/start',
+                serviceType : 'std_srvs/Trigger'
+            });
+            this.navigation_stop = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/roslaunch/eddy_navigation/stop',
+                serviceType : 'std_srvs/Trigger'
+            });
+
+	    this.recording_topic = new ROSLIB.Topic({
+                ros : this.ros,
+                name : '/rosbag/recording',
+                messageType : 'std_msgs/Bool'
+            });
+	    this.recording_topic.subscribe(function (msg) {
+                updateRecordButton(msg.data, "record-btn");
+            });
+            this.recording_start = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/rosbag/record/start',
+                serviceType : 'std_srvs/Empty'
+            });
+            this.recording_stop = new ROSLIB.Service({
+                ros : this.ros,
+                name : '/rosbag/record/stop',
+                serviceType : 'std_srvs/Empty'
+            });
+          }
+        }
+      }
+      
+      robot.init();
+
+      window.onload = function () {
+	buildDashboard("Operational Mode");
+	feather.replace()
+	onLoadROS(robot.ros);
+
+	robot.rosbag_prefix.get(function (value) {
+		$("#prefix-text").val(value);
+	});
+
+	$("#teleop-force-btn").click(function () {
+		robot.teleop_mode.set("force");
+		updateParamButton("force");
+	});
+
+        $("#teleop-velocity-btn").click(function () {
+                robot.teleop_mode.set("velocity");
+                updateParamButton("velocity");
+        });
+
+        $("#upload-btn").click(function() {
+		robot.rosbag_prefix.set($("#prefix-text").val());
+        });
+
+        $("#record-btn").click(function() {
+                if ($(this).html() == "Record") {
+                        robot.recording_start.callService(new ROSLIB.ServiceRequest({}), function () {});
+                } else if ($(this).html() == "Stop") {
+                        robot.recording_stop.callService(new ROSLIB.ServiceRequest({}), function () {});
+                }
+        });
+
+        $("#teleop-btn").click(function() {
+                if ($(this).html() == "ON") {
+                        robot.teleop_start.callService(new ROSLIB.ServiceRequest({}), function () {});
+                } else if ($(this).html() == "OFF") {
+                        robot.teleop_stop.callService(new ROSLIB.ServiceRequest({}), function () {});
+                }
+                updateButton(null, "teleop-btn", true);
+        });
+
+	$("#actuators-btn").click(function() {
+		if ($(this).html() == "ON") {
+			robot.actuators_start.callService(new ROSLIB.ServiceRequest({}), function () {});
+		} else if ($(this).html() == "OFF") {
+			robot.actuators_stop.callService(new ROSLIB.ServiceRequest({}), function () {});
+		}
+		updateButton(null, "actuators-btn", true);
+	});
+        $("#sensors-btn").click(function() {
+                if ($(this).html() == "ON") {
+                        robot.sensors_start.callService(new ROSLIB.ServiceRequest({}), function () {});
+                } else if ($(this).html() == "OFF") {
+                        robot.sensors_stop.callService(new ROSLIB.ServiceRequest({}), function () {});
+                }
+		updateButton(null, "sensors-btn", true);
+        });
+        $("#localization-btn").click(function() {
+                if ($(this).html() == "ON") {
+                        robot.localization_start.callService(new ROSLIB.ServiceRequest({}), function () {});
+                } else if ($(this).html() == "OFF") {
+                        robot.localization_stop.callService(new ROSLIB.ServiceRequest({}), function () {});
+                }
+		updateButton(null, "localization-btn", true);
+        });
+        $("#navigation-btn").click(function() {
+                if ($(this).html() == "ON") {
+                        robot.navigation_start.callService(new ROSLIB.ServiceRequest({}), function () {});
+                } else if ($(this).html() == "OFF") {
+                        robot.navigation_stop.callService(new ROSLIB.ServiceRequest({}), function () {});
+                }
+		updateButton(null, "navigation-btn", true);
+        });
+      };
+    
+      window.onunload = function () {
+        robot.ros.close();
+      };
+    </script>
+
+    <!-- Bootstrap core CSS -->
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+      .bd-placeholder-img {
+        font-size: 1.125rem;
+        text-anchor: middle;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+
+      @media (min-width: 768px) {
+        .bd-placeholder-img-lg {
+          font-size: 3.5rem;
+        }
+      }
+    </style>
+    <!-- Custom styles for this template -->
+    <link href="./css/dashboard.css" rel="stylesheet">
+  </head>
+  <body>
+
+        <nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+                <div class="navbar-brand"/>
+                        <div class="navbar-item ml-3 mr-3" style="color:white;">
+                        Eddy <span id="ros-status" class="badge badge-warning">Connecting</span>
+			<button type="button" class="btn ml-4 btn-sm btn-danger"  data-toggle="modal" data-target="#shutdownModal">Shutdown</button>
+                        </div>
+                </div>
+                <button class="navbar-toggler position-absolute d-md-none collapsed mt-1" type="button" data-toggle="collapse" data-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expa>
+                        <span class="navbar-toggler-icon"></span>
+                </button>
+        </nav>
+
+	<div class="modal fade" id="shutdownModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<h5 class="modal-title" id="exampleModalLabel">Shutdown Eddy</h5>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+				<div class="modal-body">
+					Are you sure you want shutdown the robot ?
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+					<button type="button" id="ros-halt" class="btn btn-danger" data-dismiss="modal">Shutdown</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+
+<div class="container-fluid">
+  <div class="row">
+    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+      <div class="sidebar-sticky pt-3">
+        <ul id="main_nav" class="nav flex-column">
+        </ul>
+
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+          <span>Extras</span>
+          <a class="d-flex align-items-center text-muted" href="#" aria-label="Add a new report">
+            <span data-feather="plus-circle"></span>
+          </a>
+        </h6>
+
+        <ul id="extra_nav" class="nav flex-column">
+        </ul>
+
+      </div>
+    </nav>
+
+    <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-md-4">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+      </div>
+
+      <div class="row">
+        <div class="column">
+          <div class="card mb-2" >
+            <div class="card-header">Actuators</div>
+            <div class="card-body">
+		This ROSLaunch file initializes all actuators (Trusters, Joystick, LED) and associated control and feedback channels. 
+
+                <div class="btn-toolbar mt-3 justify-content-end" role="toolbar" aria-label="Toolbar with button groups">
+                  <button id="actuators-btn" type="button" class="btn btn-success btn-sm">ON</button>
+                </div>
+
+            </div>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card mb-2" >
+            <div class="card-header">Sensors</div>
+            <div class="card-body">
+		This ROSLaunch file initializes all sensors (Camera, Sonar, GPS, IMU, Voltmeter) and their associated data channels.
+
+                <div class="btn-toolbar mt-3 justify-content-end" role="toolbar" aria-label="Toolbar with button groups">
+		  <button id="sensors-btn" type="button" class="btn btn-success btn-sm">ON</button>
+                </div>
+
+            </div>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card mb-2" >
+            <div class="card-header">Teleop</div>
+            <div class="card-body">
+                This ROSLaunch file initializes a teleop node that enable control of the vehicle through force or velocity commands.
+
+                <div class="btn-toolbar mt-3 justify-content-between" role="toolbar" aria-label="Toolbar with button groups">
+		  <div class="btn-group mr-2" role="group">
+                    <button id="teleop-force-btn" type="button" class="btn btn-light btn-sm active">Force</button>
+                    <button id="teleop-velocity-btn" type="button" class="btn btn-light btn-sm">Velocity</button>
+                  </div>
+
+                  <button id="teleop-btn" type="button" class="btn btn-success btn-sm">ON</button>
+                </div>
+
+            </div>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card mb-2" >
+            <div class="card-header">Localization</div>
+            <div class="card-body">
+                This ROSLaunch file initializes the sensor fusion algorithms that calculate smooth global localization using the GPS/IMU.
+
+                <div class="btn-toolbar mt-3 justify-content-end" role="toolbar" aria-label="Toolbar with button groups">
+                  <button id="localization-btn" type="button" class="btn btn-success btn-sm">ON</button>
+                </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card mb-2" >
+            <div class="card-header">Navigation</div>
+            <div class="card-body">
+                This ROSLaunch file initializes the ROS navigation stack that provides waypoint navigation in local and WGS-84 GPS coordinate frame.
+
+                <div class="btn-toolbar mt-3 justify-content-end" role="toolbar" aria-label="Toolbar with button groups">
+                  <button id="navigation-btn" type="button" class="btn btn-success btn-sm">ON</button>
+                </div>
+            </div>
+          </div>
+        </div>
+
+
+
+        <div class="column">
+          <div class="card mb-2" >
+            <div class="card-header">Record</div>
+            <div class="card-body">
+                This ROSService starts and stops the recording of a set of predefined topics in a ROSBag file with customizable prefix. 
+
+                <div class="btn-toolbar mt-3 justify-content-between" role="toolbar" aria-label="Toolbar with button groups">
+			<div class="input-group input-group-sm">
+				<input type="text" class="form-control" placeholder="eddy" id="prefix-text">
+				<button class="btn btn-success" type="button" id="upload-btn"><span data-feather="upload"></span></button>
+			</div>
+			<button id="record-btn" type="button" class="btn btn-danger btn-sm">Record</button>
+                </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+      
+  </div>
+</div>
+<script src="./javascript/bootstrap.bundle.min.js"></script>
+<script src="./javascript/feather.min.js"></script>
+
+<script type="text/javascript">
+  feather.replace()
+</script>
+
+</body>
+</html>

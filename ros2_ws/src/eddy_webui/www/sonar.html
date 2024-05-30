@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Robert Codd-Downey">
+    <meta name="generator" content="Jekyll v4.1.1">
+    <title>Eddy Dashboard</title>
+
+    <script src="./javascript/eventemitter2.js"></script>
+    <script src="./javascript/roslib.min.js"></script>
+    <script src="./javascript/jpg.js"></script>
+    <script src="./javascript/Chart.min.js"></script>
+    <script src="./javascript/dashboard.js"></script>
+
+    <script type="text/javascript">
+      'use strict';
+			
+			var depth_cfg = {
+				type: 'line',
+				data: {
+					labels: new Array(150+1).join('0').split(''),
+					datasets: [{
+						data: new Array(150+1).join('0').split('').map(parseFloat),
+						backgroundColor: 'rgba(15, 99, 255, 0.5)',
+						borderColor: 'rgba(15, 9, 255, 1)',
+						borderWidth: 2,
+						pointRadius: 0.1
+					}]
+				},
+				options: {
+					responsive: false,
+					showTooltips: false,
+					legend: {
+						display: false
+					},
+					scales: {
+						xAxes: [{
+							display: false,
+						}],
+						yAxes: [{
+							ticks: {
+								suggestedMin: 0,
+								fontColor: "black",
+								reverse: true,
+								min: 0,
+								max: 10
+							},
+							gridLines: {
+								display: true
+							}
+						}]
+					}
+				}
+			};
+			
+			var profile_cfg = {
+				type: 'bar',
+				data: {
+					labels: new Array(200+1).join('0').split(''),
+					datasets: [{
+						data: new Array(200+1).join('0').split('').map(parseFloat),
+						borderWidth: 2,
+						pointRadius: 0.1
+					}]
+				},
+				options: {
+					responsive: false,
+					showTooltips: false,
+					linearGradientLine: true,
+					legend: {
+						display: false
+					},
+					scales: {
+						xAxes: [{
+              display: false,
+						}],
+						yAxes: [{
+							ticks: {
+								fontColor: "white",
+								min: 0,
+								max: 255
+							},
+							gridLines: {
+								display: true
+							}
+						}]
+					}
+				}
+			};
+      
+      function displayImage(canvasId, url) {
+        var j = new JpegImage();
+        j.onload = function() {
+          var c = document.getElementById(canvasId);
+          var ctx = c.getContext("2d");
+          var d = ctx.getImageData(0,0,c.width,c.height);
+          j.copyToImageData(d);
+          ctx.putImageData(d, 0, 0);
+        };
+        j.load(url);
+      }
+      
+      function displayImageMessage(message) {
+        displayImage("history-image", "data:image/jpeg;base64," + message.data);
+      }
+    
+      function updateDepthPlot(message) {
+        var header = document.getElementById("depth-header");
+        header.innerHTML = "Depth (" + Math.round(message.range * 10) / 10 + " m)";
+        var chart = window.depth_graph;
+							
+				chart.data.labels.splice(0, 1);
+        if (chart.data.datasets[0].data.length >= 150) {
+          chart.data.datasets[0].data.splice(0, 1);
+        }
+
+        chart.data.labels.push('');
+        chart.data.datasets[0].data.push(message.range);
+        
+        chart.update();
+      }
+    
+      function updateProfileDisplay(message) {
+        var chart = window.profile_graph;
+
+        var data = atob(message.data);
+
+        chart.data.datasets[0].data = [];
+        for (var i = 0; i < data.length; i++){  
+          chart.data.datasets[0].data.push(data.charCodeAt(i));
+        }
+        
+        chart.update();
+      }
+      
+      if (!robot) {
+        var robot = {
+          ros: null,
+          image_sub : null,
+          distance_sub : null,
+          profile_sub : null,
+          name: "",
+          init: function() {
+            this.ros = new ROSLIB.Ros({
+              url : 'ws://' + location.hostname + ':9090'
+            });
+						this.ros.on('error', function(error) {
+							updateRosStatus('error');
+						});
+						this.ros.on('connection', function(error) {
+							updateRosStatus('connection');
+						});
+						this.ros.on('close', function(error) {
+							updateRosStatus('close');
+						});
+            
+            this.image_sub = new ROSLIB.Topic({
+              ros : this.ros,
+              name : '/eddy/sensors/sonar/history/compressed',
+              messageType : 'sensor_msgs/CompressedImage'
+            });
+            this.image_sub.subscribe(function (message) {
+              console.log("Recieved images message");
+              displayImageMessage(message);
+            });
+            this.distance_sub = new ROSLIB.Topic({
+              ros : this.ros,
+              name : '/eddy/sensors/sonar/distance',
+              messageType : 'sensor_msgs/Range'
+            });
+            this.distance_sub.subscribe(function (message) {
+              console.log("Recieved range message");
+              updateDepthPlot(message);
+            });
+            this.profile_sub = new ROSLIB.Topic({
+              ros : this.ros,
+              name : '/eddy/sensors/sonar/profile',
+              messageType : 'std_msgs/UInt8MultiArray',
+            });
+            this.profile_sub.subscribe( function (message) {
+              console.log("Recieved profile message");
+              updateProfileDisplay(message);
+            });
+          }
+        }
+      }
+      
+      robot.init();
+
+      window.onload = function () {
+	buildDashboard("Sonar");
+	feather.replace();
+	onLoadROS(robot.ros);
+
+        var depth_ctx = document.getElementById("depth-log").getContext("2d");
+        window.depth_graph = new Chart(depth_ctx, depth_cfg);
+        var temp_ctx = document.getElementById("profile-log").getContext("2d");
+        window.profile_graph = new Chart(temp_ctx, profile_cfg);
+      };
+    
+      window.onunload = function () {
+        robot.ros.close();
+      };
+    </script>
+
+    <!-- Bootstrap core CSS -->
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+      .bd-placeholder-img {
+        font-size: 1.125rem;
+        text-anchor: middle;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+
+      @media (min-width: 768px) {
+        .bd-placeholder-img-lg {
+          font-size: 3.5rem;
+        }
+      }
+    </style>
+    <!-- Custom styles for this template -->
+    <link href="./css/dashboard.css" rel="stylesheet">
+  </head>
+  <body>
+
+        <nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+                <div class="navbar-brand"/>
+                        <div class="navbar-item ml-3 mr-3" style="color:white;">
+                        Eddy <span id="ros-status" class="badge badge-warning">Connecting</span>
+                        <button type="button" class="btn ml-4 btn-sm btn-danger"  data-toggle="modal" data-target="#shutdownModal">Shutdown</button>
+                        </div>
+                </div>
+                <button class="navbar-toggler position-absolute d-md-none collapsed mt-1" type="button" data-toggle="collapse" data-target="#sidebarMenu" ar>
+                        <span class="navbar-toggler-icon"></span>
+                </button>
+        </nav>
+
+        <div class="modal fade" id="shutdownModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                        <div class="modal-content">
+                                <div class="modal-header">
+                                        <h5 class="modal-title" id="exampleModalLabel">Shutdown Eddy</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                        </button>
+                                </div>
+                                <div class="modal-body">
+                                        Are you sure you want shutdown the robot ?
+                                </div>
+                                <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                        <button type="button" id="ros-halt" class="btn btn-danger" data-dismiss="modal">Shutdown</button>
+                                </div>
+                        </div>
+                </div>
+        </div>
+
+<div class="container-fluid">
+  <div class="row">
+    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+      <div class="sidebar-sticky pt-3">
+        <ul id="main_nav" class="nav flex-column">
+        </ul>
+
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+          <span>Extras</span>
+          <a class="d-flex align-items-center text-muted" href="#" aria-label="Add a new report">
+            <span data-feather="plus-circle"></span>
+          </a>
+        </h6>
+
+        <ul id="extra_nav" class="nav flex-column">
+        </ul>
+
+      </div>
+    </nav>
+
+    <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-md-4">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+      </div>
+
+      <div class="row">
+        <div class="column">
+          <div class="card mb-2" >
+            <div class="card-header">History</div>
+            <div class="card-body">
+              <canvas class="w-100" id="history-image"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card mb-2" >
+            <div id="depth-header" class="card-header">Depth (m)</div>
+            <div class="card-body">
+              <canvas class="w-100" id="depth-log"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card mb-2" >
+            <div class="card-header">Response</div>
+            <div class="card-body">
+              <canvas class="w-100" id="profile-log"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      
+  </div>
+</div>
+<script src="./javascript/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+<script src="./javascript/bootstrap.bundle.min.js"></script>
+<script src="./javascript/feather.min.js"></script>
+
+<script type="text/javascript">
+  feather.replace()
+</script>
+
+<!--<script src="./javascript/dashboard.js"></script>-->
+</body>
+</html>

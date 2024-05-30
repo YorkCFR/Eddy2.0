@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="Robert Codd-Downey">
+    <meta name="generator" content="Jekyll v4.1.1">
+    <title>Eddy Dashboard</title>
+
+    <script src="./javascript/eventemitter2.js"></script>
+    <script src="./javascript/roslib.min.js"></script>
+    <script src="./javascript/jpg.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="./css/leaflet.css" />
+    <script src="./javascript/leaflet.js"></script>
+
+    <script src="./javascript/sql.js"></script>
+    <script src="./javascript/Leaflet.TileLayer.MBTiles.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="./css/leaflet.draw.css" />
+    <script src="./javascript/leaflet.draw.js"></script>
+
+    <script src="./javascript/dashboard.js"></script>
+
+
+    <script type="text/javascript">
+      'use strict';
+
+      var map = null;
+      var marker_position = null;
+      var path = [];
+      var polyline_path = null;
+
+      function updateGpsPath(message) {
+        path.push([message.latitude, message.longitude]);
+
+        if (map == null) {
+          return;
+        }
+
+        if (marker_position != null) {
+          map.removeLayer(marker_position);
+          polyline_path = null;
+        }
+        marker_position = L.marker([message.latitude, message.longitude]).addTo(map);
+        
+        if (polyline_path != null) {
+          map.removeLayer(polyline_path);
+          polyline_path = null;
+        }
+        polyline_path = L.polyline(path, { color: '#000' }).addTo(map);
+      }
+      
+      if (!robot) {
+        var robot = {
+          ros: null,
+          gps_sub : null,
+          name: "",
+	  init: function() {
+            var host = null;
+            if(location.hostname === "")
+              host = "ws://127.0.0.1:9090";
+            else
+              host = 'ws://' + location.hostname + ':9090';
+            this.ros = new ROSLIB.Ros({
+              url : host
+            });
+
+						this.ros.on('error', function(error) {
+							updateRosStatus('error');
+						});
+						this.ros.on('connection', function(error) {
+							updateRosStatus('connection');
+						});
+						this.ros.on('close', function(error) {
+							updateRosStatus('close');
+						});
+            this.gps_sub = new ROSLIB.Topic({
+	      ros : this.ros,
+              name : '/eddy/sensors/gps/fix',
+              messageType : 'sensor_msgs/NavSatFix'
+            });
+            this.gps_sub.subscribe(function (message) {
+              console.log("Recived a NavSatFix message");
+              updateGpsPath(message);
+
+              var label = document.getElementById("location-label");
+              var lat = parseFloat(message.latitude).toFixed(4);
+              var lon = parseFloat(message.longitude).toFixed(4);
+
+              label.innerHTML = "- Lat: " + lat + " Lon: " + lon;
+              
+              // map.setView([lat, lon], map.getZoom());
+	    });
+	  }
+        }
+      }
+      robot.init();
+      
+      window.onload = function () {
+	buildDashboard("GPS");
+	feather.replace();
+	onLoadROS(robot.ros);
+
+	L.Icon.Default.imagePath = "http://" + location.host + "/images/";
+	L.Icon.Default.prototype.options = {
+		iconRetinaUrl: "marker-icon-2x.png",
+  		iconUrl: "marker-icon.png",
+  		shadowUrl: "marker-shadow.png"
+	};
+
+	map = new L.Map('mapid')
+
+	var mbs = L.tileLayer.mbTiles('./assets/stong_pond.mbtiles', {
+		minZoom: 15,
+		maxZoom: 21
+	}).addTo(map);
+
+        var mbf = L.tileLayer.mbTiles('./assets/farlain.mbtiles', {
+                minZoom: 17,
+                maxZoom: 21
+        }).addTo(map);
+
+	map.setView([43.7712, -79.5070], 17);
+
+	mb.on('databaseloaded', function(ev) {
+		console.info('MBTiles DB loaded', ev);
+	});
+	mb.on('databaseerror', function(ev) {
+		console.info('MBTiles DB error', ev);
+	});
+
+      }
+
+      window.onunload = function () {
+        robot.ros.close();
+      };
+    </script>
+
+    <!-- Bootstrap core CSS -->
+    <link href="./css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+      .bd-placeholder-img {
+        font-size: 1.125rem;
+        text-anchor: middle;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+      }
+
+      .card {
+	width: 35rem;
+      }
+
+      #mapid {
+        height: 30rem;
+	width: 35rem;
+      }
+
+      @media (min-width: 768px) {
+        .bd-placeholder-img-lg {
+          font-size: 3.5rem;
+        }
+      }
+    </style>
+    <!-- Custom styles for this template -->
+    <link href="./css/dashboard.css" rel="stylesheet">
+  </head>
+  <body>
+
+        <nav class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
+                <div class="navbar-brand"/>
+                        <div class="navbar-item ml-3 mr-3" style="color:white;">
+                        Eddy <span id="ros-status" class="badge badge-warning">Connecting</span>
+                        <button type="button" class="btn ml-4 btn-sm btn-danger"  data-toggle="modal" data-target="#shutdownModal">Shutdown</button>
+                        </div>
+                </div>
+                <button class="navbar-toggler position-absolute d-md-none collapsed mt-1" type="button" data-toggle="collapse" data-target="#sidebarMenu" ar>
+                        <span class="navbar-toggler-icon"></span>
+                </button>
+        </nav>
+
+        <div class="modal fade" id="shutdownModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+                <div class="modal-dialog">
+                        <div class="modal-content">
+                                <div class="modal-header">
+                                        <h5 class="modal-title" id="exampleModalLabel">Shutdown Eddy</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                <span aria-hidden="true">&times;</span>
+                                        </button>
+                                </div>
+                                <div class="modal-body">
+                                        Are you sure you want shutdown the robot ?
+                                </div>
+                                <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                        <button type="button" id="ros-halt" class="btn btn-danger" data-dismiss="modal">Shutdown</button>
+                                </div>
+                        </div>
+                </div>
+        </div>
+
+<div class="container-fluid">
+  <div class="row">
+    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+      <div class="sidebar-sticky pt-3">
+        <ul id="main_nav" class="nav flex-column">
+        </ul>
+
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+          <span>Extras</span>
+          <a class="d-flex align-items-center text-muted" href="#" aria-label="Add a new report">
+            <span data-feather="plus-circle"></span>
+          </a>
+        </h6>
+
+        <ul id="extra_nav" class="nav flex-column">
+        </ul>
+
+      </div>
+    </nav>
+
+    <main role="main" class="col-md-9 ml-sm-auto col-lg-10 px-md-4">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+      </div>
+
+      <div class="row">
+        <div class="column">
+          <div class="card mb-2" >
+            <div class="card-header">GPS <span id="location-label">- Lat:0.0 Lon:0.0</div>
+            <div class="card-body">
+              <div id="mapid" class="w-100 shadow-sm"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+<script src="./javascript/jquery-3.5.1.slim.min.js"></script>
+<script src="./javascript/bootstrap.bundle.min.js"></script>
+<script src="./javascript/feather.min.js"></script>
+
+<script type="text/javascript">
+  feather.replace()
+</script>
+
+</body>
+</html>
