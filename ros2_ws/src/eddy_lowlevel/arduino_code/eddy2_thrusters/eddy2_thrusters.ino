@@ -11,6 +11,8 @@
  *  Before using the controller, ensure that the controller is set up with FAILSAFE enabled on channel 6 at -100%
  *  Nothing will work well if you do not. To do this
  *  * turn the controller on
+ *  * Enable the AUX buttons with button A assigned to channel 5 and button B assigned to channel 6
+ *  * Enable failsafe -100 on channel 
  *  * hold the OK button (two up from the power switch) on for a few seconds until the display shows two icons
  *    they are system and setup. Use the UP and DOWN buttons on the left hand side of the display so that SYSTEM
  *    is selected. Push the OK button. This will bring up the SYSTEM menu.
@@ -18,7 +20,7 @@
  *  * use the UP and DOWN buttons to select Failsafe and press the OK button
  *  * use the UP and DOWN buttons tp select channel 6
  *  * use the UP AND DOWN buttons to select ON
- *  * use toggle switch second from the left so that the bar goes to the left (it will either be the left or right)
+ *  * use VRA switch that the bar goes to the left (it will either be the left or right)
  *  * hold the CANCEL button (above the power switch) to set the mode. Use cancel button
  *  * after this you should see -100% on the display for Failsafe sets
  *
@@ -66,7 +68,7 @@
 #include <Servo.h>
 
 // comment out the following for runtime
-// #define DEBUG
+//#define DEBUG
 
 
 const int MODE_ROS = 1;
@@ -106,7 +108,7 @@ const int light_pin = 10;
 
 int estop_recover = 0;
 
-const float gain = 0.2; // used to do program hacking
+const float gain = 0.8; // used to do program hacking
 
 float ros_port = 0;
 float ros_starboard = 0;
