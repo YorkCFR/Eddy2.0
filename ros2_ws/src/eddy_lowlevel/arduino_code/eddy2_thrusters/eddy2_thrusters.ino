@@ -44,6 +44,9 @@
  *  * toggle the switch on the left up and down twice so that it ends in manual mode. Then the robot will leave MODE_ESTOP
  *    and move to MODE_MANUAL
  *
+ * Version 3.1
+ *     - gain cleanup
+ *     - added polarity
  * Version 3.0
  *      - code cleanup and simplification
  * Version 2.1
@@ -108,7 +111,8 @@ const int light_pin = 10;
 
 int estop_recover = 0;
 
-const float gain = 0.8; // used to do program hacking
+const float gain = 1.0; // used to do program hacking
+const float polarity = -1.0; // which way are the thrusters mounted?
 
 float ros_port = 0;
 float ros_starboard = 0;
@@ -564,9 +568,9 @@ void loop() {
       Serial.print("In ROS MODE moving to Manual ");
 # endif
     } else {
-      int posa = THRUSTER_STOP + gain * ros_port * THRUSTER_RANGE;
+      int posa = THRUSTER_STOP + polarity * gain * ros_port * THRUSTER_RANGE;
       port.writeMicroseconds(posa);
-      int posb = THRUSTER_STOP + gain * ros_starboard * THRUSTER_RANGE;
+      int posb = THRUSTER_STOP + polarity * gain * ros_starboard * THRUSTER_RANGE;
       starboard.writeMicroseconds(posb);
       int posl = LIGHT_OFF + gain * ros_light * LIGHT_RANGE;
       light.write(posl);
@@ -585,9 +589,9 @@ void loop() {
 # ifdef DEBUG
       Serial.print("In MAN Mode ");  Serial.print(rc_in[LEFT_STICK]); Serial.print(" "); Serial.print(rc_in[RIGHT_STICK]); Serial.print(" ");
 # endif
-      int posa = THRUSTER_STOP + gain * rc_in[LEFT_STICK] * THRUSTER_RANGE;
+      int posa = THRUSTER_STOP + polarity * gain * rc_in[LEFT_STICK] * THRUSTER_RANGE;
       port.writeMicroseconds(posa);
-      int posb = THRUSTER_STOP + gain * rc_in[RIGHT_STICK] * THRUSTER_RANGE;
+      int posb = THRUSTER_STOP + polarity * gain * rc_in[RIGHT_STICK] * THRUSTER_RANGE;
       starboard.writeMicroseconds(posb);
       int posl = LIGHT_OFF;
       light.write(posl);
@@ -625,3 +629,4 @@ void loop() {
   Serial.println("");
 # endif
 }
+
